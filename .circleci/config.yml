@@ -13,7 +13,7 @@ jobs:
     docker: # run the steps with Docker
       - image: circleci/openjdk:11.0.3-jdk-stretch
         auth:
-          username: 3425149
+          username: "3425149"
           password: $DOCKERHUB_PASSWORD
     steps: # a collection of executable commands
       - checkout # check out source code to working directory
