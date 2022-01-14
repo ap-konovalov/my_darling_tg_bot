@@ -5,22 +5,36 @@ version: 2.1
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  say-hello:
-    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
-    docker:
-      - image: cimg/base:stable
-    # Add steps to the job
-    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
-    steps:
-      - checkout
+  build:
+    environment:
+      # Configure the JVM and Gradle to avoid OOM errors
+      BOT_USERNAME: $BOT_USERNAME
+      BOT_TOKEN: $BOT_TOKEN
+    docker: # run the steps with Docker
+      - image: circleci/openjdk:11.0.3-jdk-stretch
+        auth:
+          username: 3425149
+          password: $DOCKERHUB_PASSWORD
+    steps: # a collection of executable commands
+      - checkout # check out source code to working directory
+      # Read about caching dependencies: https://circleci.com/docs/2.0/caching/
+      - restore_cache:
+          key: v1-gradle-wrapper-{{ checksum "gradle/wrapper/gradle-wrapper.properties" }}
+      - restore_cache:
+          key: v1-gradle-cache-{{ checksum "build.gradle" }}
       - run:
-          name: "Say hello"
-          command: "echo Hello, World!"
-
-# Invoke jobs via workflows
-# See: https://circleci.com/docs/2.0/configuration-reference/#workflows
+          name: Assemble JAR
+          command: |
+            # Skip this for other nodes
+            if [ "$CIRCLE_NODE_INDEX" == 0 ]; then
+              ./gradlew assemble
+            fi
+      # As the JAR was only assembled in the first build container, build/libs will be empty in all the other build containers.
+      - store_artifacts:
+          path: build/libs
+      # See https://circleci.com/docs/2.0/deployment-integrations/ for deploy examples
 workflows:
-  say-hello-workflow:
+  version: 2
+  workflow:
     jobs:
-      - say-hello
+      - build
